@@ -1,11 +1,15 @@
 from builtins import super
 import random
+import pickle
 
 import torch
 from torch import nn, optim
 from torch.distributions.normal import Normal
 
 from vhe import VHE, DataLoader, Transform
+
+
+
 
 # This toy example demonstrates how to train a Variational Homoencoder (VHE) for data organised into classes
 #
@@ -48,10 +52,21 @@ from vhe import VHE, DataLoader, Transform
 
 ## ----- Model definition -----
 Dc = 2 # Number of elements in the support set D (i.e. number of elements input to encoder q_c)
-x_dim = 2
-c_dim = 3
-z_dim = 1
-h_dim = 10
+x_dim = 89*590
+c_dim = 30
+z_dim = 30
+h_dim = 120
+
+
+data_path = 'sess_info_mean_by_region_ids.pickle'
+
+with open(data_path, 'rb') as f:
+    sess_info = pickle.load(f)
+
+data = torch.FloatTensor(sess_info[0])
+data = data.view(-1, 590*89)
+class_labels = sess_info[1]
+
 
 class Px(nn.Module):
     def __init__(self):
@@ -98,20 +113,20 @@ class Qz(nn.Module):
 vhe = VHE(encoder=[Qc(), Qz()], decoder=Px()) #Use default prior c,z ~ N(0, 1)
 
 
-## ----- Generate dataset -----
-n = 0
-def generateClass():
-    class_size = random.randint(10,20) # Randomly sample between 10 and 20 examples of each class
-    mu = torch.randn(1, x_dim) + 3
-    offset = torch.randn(class_size, 1)
-    return mu + offset
-classes = [generateClass() for i in range(1000)]
-data = torch.cat(classes)
-class_labels = [i for i in range(len(classes)) for j in range(len(classes[i]))] 
+## ----- Generate dat……æ“≥≤≥æ``` = 0
+#def generateClass():
+#    class_size = random.randint(10,20) # Randomly sample between 10 and 20 examples of each class
+#    mu = torch.randn(1, x_dim) + 3
+#    offset = torch.randn(class_size, 1)
+#    return mu + offset
+#
+#classes = [generateClass() for i in range(1000)]
+#data = torch.cat(classes)
+#class_labels = [i for i in range(len(classes)) for j in range(len(classes[i]))]
 
 
 ## ----- Data loader creates minibatches of data -----
-batch_size = 100
+batch_size = 2
 data_loader = DataLoader(
         data = data,
         labels = {"c":class_labels, "z":range(len(data))},
@@ -130,13 +145,13 @@ for epoch in range(nEpochs):
     print("Epoch %d Score %3.3f KLc %3.3f KLz %3.3f" % (epoch+1, score.item(), kl.c.item(), kl.z.item()))
 print("\n" + "-" * 20)
 
-## ----- Testing -----
-def pretty(vector): return "[" + ", ".join("%2.2f" % x for x in vector) + "]"
-for i in range(3):
-    test_class = generateClass()
-    test_D = test_class[:Dc].unsqueeze(0) # Batch size 1
-    print("\nSupport set D = [" + ", ".join(pretty(x) for x in test_D[0]) + "]" )
-    print("Posterior predictive samples:")
-    for j in range(3):
-        x = vhe.sample(inputs={"c":test_D}).x[0]
-        print("  x = " + pretty(x))
+### ----- Testing -----
+#def pretty(vector): return "[" + ", ".join("%2.2f" % x for x in vector) + "]"
+#for i in range(3):
+#    test_class = generateClass()
+#    test_D = test_class[:Dc].unsqueeze(0) # Batch size 1
+#    print("\nSupport set D = [" + ", ".join(pretty(x) for x in test_D[0]) + "]" )
+#    print("Posterior predictive samples:")
+#    for j in range(3):
+#        x = vhe.sample(inputs={"c":test_D}).x[0]
+#        print("  x = " + pretty(x))#
